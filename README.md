@@ -1,3 +1,14 @@
+---
+title: Auto Rollcall THU TronClass
+emoji: 📋
+colorFrom: indigo
+colorTo: purple
+sdk: docker
+app_port: 7860
+license: agpl-3.0
+short_description: TronClass 全自動點名助手（東海 iLearn / 淡江 iClass）
+---
+
 # Auto-Rollcall-thu-Tronclass
 
 **TronClass 校園點名系統的全自動點名工具｜支援東海 (THU)「iLearn」、淡江 (TKU)「iClass」**
