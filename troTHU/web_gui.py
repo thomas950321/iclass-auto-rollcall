@@ -2116,6 +2116,13 @@ HTML_CONTENT = """<!doctype html>
 </div>
 
 <script>
+// ── Global State ──
+var isRunning = false;
+var isFetchingLogs = false;
+var selectedMinutes = 0;
+var timerEndAt = null;
+var timerInterval = null;
+
 // ── View switching ──
 const VIEWS = { dashboard:'控制台', schedule:'上課排程', settings:'帳號設定' };
 const allNavItems = document.querySelectorAll('[data-view]');
@@ -2126,8 +2133,17 @@ function switchView(name) {
   viewSections.forEach(s => s.classList.toggle('active', s.id === name + '-view'));
   allNavItems.forEach(b => b.classList.toggle('active', b.dataset.view === name));
   document.getElementById('breadcrumb-title').textContent = VIEWS[name];
+  if (window.location.hash !== '#' + name) {
+    history.replaceState(null, '', '#' + name);
+  }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+function handleHash() {
+  const h = (window.location.hash || '').replace('#', '').trim();
+  if (VIEWS[h]) switchView(h);
+}
+window.addEventListener('hashchange', handleHash);
 
 allNavItems.forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
 
@@ -2384,10 +2400,6 @@ function updateScheduleSummary() {
 }
 
 updateScheduleSummary();
-
-// ── State ──
-let isRunning = false;
-let isFetchingLogs = false;
 
 // ── Fetch Config ──
 async function fetchConfig() {
@@ -2672,12 +2684,7 @@ document.getElementById('saveScheduleBtn').addEventListener('click', async () =>
   } catch(e) { showToast('網路連線錯誤','','err'); }
 });
 
-// ── Timer selector ──
 // ── Timer selector & Auto-stop ──
-let selectedMinutes = 0;  // 0 = unlimited
-let timerEndAt    = null; // Date when auto-stop fires
-let timerInterval = null;
-
 const timerBtns = document.querySelectorAll('.timer-opt');
 const customBtn = document.getElementById('customTimerBtn');
 const customWrap = document.getElementById('customTimerWrap');
@@ -2863,6 +2870,7 @@ document.getElementById('clearSessionBtn').addEventListener('click', () => {
 document.getElementById('logFilter').addEventListener('input', () => fetchStatus());
 
 // ── Init ──
+handleHash();
 fetchConfig();
 fetchStatus();
 setInterval(fetchStatus, 1500);
