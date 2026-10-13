@@ -52,7 +52,7 @@ class NumberDirectLookupTest(unittest.IsolatedAsyncioTestCase):
             server.student_rollcalls_leaks_code = leaks
             try:
                 tron.COMPLETED_NUMBER_ROLLCALLS.clear()
-                _configure_provider_for_fake_server("tku", server)
+                _configure_provider_for_fake_server("thu", server)
                 tron.CONFIG["number"]["direct_code_lookup"]["enabled"] = enabled
                 # Force sequential brute-force so attempt ordering is deterministic.
                 tron.CONFIG["number"]["concurrency"] = 1

@@ -64,6 +64,7 @@ def make_config():
                     "line": [],
                 },
             },
+            "provider": "thu",
             "config": {"enable_log": True},
         }
     )

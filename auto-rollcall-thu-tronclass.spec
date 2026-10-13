@@ -99,6 +99,7 @@ HIDDEN_IMPORTS = sorted(
             "troTHU.tron_http",
             "troTHU.ux_tools",
             "troTHU.webview_sync",
+            "troTHU.web_gui",
             "aiohttp",
             "aiohttp.web",
             "yaml",

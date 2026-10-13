@@ -1114,4 +1114,6 @@ def __dir__():
 CONFIG = copy.deepcopy(DEFAULT_CONFIG)
 NOTIFICATION_SINKS = []
 IS_LOGGING_IN = False
+GUI_LOGS = []
+append_gui_log = lambda msg: GUI_LOGS.append(str(msg))
 cnt = 0

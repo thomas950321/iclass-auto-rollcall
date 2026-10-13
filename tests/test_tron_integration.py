@@ -50,7 +50,30 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.url_patch = self.fake_server.patch_tron_http_urls(tron_http)
         self.url_patch.__enter__()
 
+        self._old_endpoints = tron_http.DEFAULT_ENDPOINTS
+        tron_http.DEFAULT_ENDPOINTS = self.fake_server.endpoints()
+
+        tron.CONFIG.update(
+            tron.normalize_config(
+                {
+                    "provider": {
+                        "current": "thu",
+                        "available": {
+                            "thu": {
+                                "base_url": self.fake_server.base_url,
+                                "login_url": self.fake_server.login_url,
+                                "rollcalls_url": self.fake_server.rollcalls_url,
+                                "current_semester_url": self.fake_server.current_semester_url,
+                                "courses_url": self.fake_server.courses_url,
+                            }
+                        }
+                    },
+                }
+            )
+        )
+
     async def asyncTearDown(self) -> None:
+        tron_http.DEFAULT_ENDPOINTS = self._old_endpoints
         tron.CONFIG.clear()
         tron.CONFIG.update(copy.deepcopy(self.original_config))
         tron.PATH = self.original_path

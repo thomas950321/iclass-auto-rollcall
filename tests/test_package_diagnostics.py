@@ -59,6 +59,7 @@ class PackageDiagnosticsTest(unittest.TestCase):
         self.assertIn("troTHU.teacher_rollcall", report["hidden_imports"])
         self.assertIn("troTHU.qr_teacher_runtime", report["hidden_imports"])
         self.assertIn("troTHU.webview_sync", report["hidden_imports"])
+        self.assertIn("troTHU.web_gui", report["hidden_imports"])
         self.assertIn("playwright", report["excludes"])
         self.assertIn("keyring", report["excludes"])
         self.assertIn("cv2", report["excludes"])
@@ -87,6 +88,7 @@ class PackageDiagnosticsTest(unittest.TestCase):
         self.assertIn("troTHU.teacher_rollcall", gaps)
         self.assertIn("troTHU.qr_teacher_runtime", gaps)
         self.assertIn("troTHU.webview_sync", gaps)
+        self.assertIn("troTHU.web_gui", gaps)
 
     def test_package_report_is_safe_and_non_secret(self) -> None:
         report = build_package_diagnostic_report(Path("."), config=tron.CONFIG)

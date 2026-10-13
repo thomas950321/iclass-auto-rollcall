@@ -268,6 +268,25 @@ class FakeTkuSsoServer:
 
 
 class TronHttpClientTest(unittest.IsolatedAsyncioTestCase):
+    def setUp(self) -> None:
+        self._old_endpoints = tron_http.DEFAULT_ENDPOINTS
+        self._old_tron = tron_http.TRON
+        self._old_login_url = tron_http.LOGIN_URL
+        self._old_rollcalls_url = tron_http.ROLLCALLS_URL
+
+        from troTHU import providers
+        thu_config = providers.get_provider("thu").to_config()
+        tron_http.DEFAULT_ENDPOINTS = tron_http.endpoints_from_provider(thu_config)
+        tron_http.TRON = "https://ilearn.thu.edu.tw"
+        tron_http.LOGIN_URL = "https://tcidentity.thu.edu.tw/auth/realms/thu/protocol/cas/login?ui_locales=zh-TW&service=https%3A//ilearn.thu.edu.tw/login&locale=zh_TW"
+        tron_http.ROLLCALLS_URL = "https://ilearn.thu.edu.tw/api/radar/rollcalls?api_version=1.1.0"
+
+    def tearDown(self) -> None:
+        tron_http.DEFAULT_ENDPOINTS = self._old_endpoints
+        tron_http.TRON = self._old_tron
+        tron_http.LOGIN_URL = self._old_login_url
+        tron_http.ROLLCALLS_URL = self._old_rollcalls_url
+
     async def test_fetch_login_form_parses_hidden_inputs(self) -> None:
         session = MagicMock()
         session.cookie_jar = FakeCookieJar()
@@ -520,6 +539,15 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         tron.clear_runtime_credentials()
         os.environ.pop("TRON_USER", None)
         os.environ.pop("TRON_PASS", None)
+        tron.CONFIG.clear()
+        tron.CONFIG.update(
+            tron.normalize_config(
+                {
+                    "account": {"user": "", "passwd": ""},
+                    "provider": {"current": "thu"},
+                }
+            )
+        )
 
     def tearDown(self) -> None:
         tron.CONFIG.clear()
@@ -555,7 +583,8 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         session.cookie_jar = MagicMock()
         tron.CONFIG["account"]["user"] = ""
         tron.CONFIG["account"]["passwd"] = ""
-
+        print("\nTEST DEBUG - CONFIG:", tron.CONFIG)
+        print("TEST DEBUG - RESOLVED CREDENTIALS:", tron.resolve_credentials())
         with patch.object(tron, "log_print") as log_print:
             result = await tron.login(session)
 

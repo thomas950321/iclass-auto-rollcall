@@ -319,7 +319,7 @@ class TronCliSmokeTest(unittest.TestCase):
 
         self.assertEqual(result, 0)
         payload = json.loads(outputs[0])
-        self.assertEqual(payload["provider"], "thu")
+        self.assertEqual(payload["provider"], "tku")
         self.assertFalse(payload["can_import"])
 
     def test_webview_preview_json_command_is_safe(self) -> None:
@@ -331,7 +331,7 @@ class TronCliSmokeTest(unittest.TestCase):
                         {
                             "name": "session",
                             "value": "secret-session",
-                            "domain": "ilearn.thu.edu.tw",
+                            "domain": "iclass.tku.edu.tw",
                             "path": "/",
                         }
                     ]
@@ -353,7 +353,7 @@ class TronCliSmokeTest(unittest.TestCase):
             path = Path(temp_dir) / "cookies.json"
             path.write_text(
                 json.dumps(
-                    [{"name": "session", "value": "secret-session", "domain": "ilearn.thu.edu.tw"}]
+                    [{"name": "session", "value": "secret-session", "domain": "iclass.tku.edu.tw"}]
                 ),
                 encoding="utf-8",
             )
@@ -375,7 +375,7 @@ class TronCliSmokeTest(unittest.TestCase):
                 input_path = base / "cookies.json"
                 input_path.write_text(
                     json.dumps(
-                        [{"name": "session", "value": "secret-session", "domain": "ilearn.thu.edu.tw"}]
+                        [{"name": "session", "value": "secret-session", "domain": "iclass.tku.edu.tw"}]
                     ),
                     encoding="utf-8",
                 )

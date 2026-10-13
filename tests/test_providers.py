@@ -1,5 +1,6 @@
 import copy
 import unittest
+import unittest.mock
 
 import aiohttp
 from yarl import URL
@@ -34,14 +35,14 @@ class ProviderConfigTest(unittest.TestCase):
         self.assertIn("/api/my-courses", provider.courses_url)
 
     def test_aliases_and_unknown_provider_fall_back_to_thu(self) -> None:
-        self.assertEqual(get_provider("Tunghai").key, DEFAULT_PROVIDER)
+        self.assertEqual(get_provider("Tunghai").key, "thu")
         self.assertEqual(get_provider("www.tronclass.com.tw").key, "tronclass")
         self.assertEqual(get_provider("not-a-provider").key, DEFAULT_PROVIDER)
 
     def test_registry_keeps_fju_hidden_and_tku_tronclass_visible(self) -> None:
         registry = provider_registry_config()
 
-        self.assertEqual(registry["current"], "thu")
+        self.assertEqual(registry["current"], "tku")
         self.assertFalse(registry["allow_experimental"])
         self.assertTrue(registry["available"]["thu"]["ready"])
         self.assertTrue(registry["available"]["fju"]["ready"])
@@ -135,7 +136,7 @@ class ProviderConfigTest(unittest.TestCase):
     def test_tron_normalize_config_adds_provider_and_research_defaults(self) -> None:
         normalized = tron.normalize_config({"config": {"user-agent": []}})
 
-        self.assertEqual(normalized["provider"]["current"], "thu")
+        self.assertEqual(normalized["provider"]["current"], "tku")
         self.assertFalse(normalized["provider"]["allow_experimental"])
         self.assertIn("thu", normalized["provider"]["available"])
         self.assertFalse(normalized["research"]["enabled"])
@@ -145,8 +146,11 @@ class ProviderConfigTest(unittest.TestCase):
 class ResearchModeConfigTest(unittest.TestCase):
     def setUp(self) -> None:
         self.original_config = copy.deepcopy(tron.CONFIG)
+        self.patcher = unittest.mock.patch("troTHU.auth_runtime.should_try_browser_assisted_login", return_value=False)
+        self.patcher.start()
 
     def tearDown(self) -> None:
+        self.patcher.stop()
         tron.CONFIG.clear()
         tron.CONFIG.update(copy.deepcopy(self.original_config))
 
@@ -177,7 +181,7 @@ class ResearchModeConfigTest(unittest.TestCase):
 
         report = tron.status_report()
 
-        self.assertEqual(report["provider"]["key"], "thu")
+        self.assertEqual(report["provider"]["key"], "tku")
         self.assertIn("provider_support", report)
         self.assertTrue(report["provider_support"]["daily_ready"])
         self.assertTrue(report["course_discovery"]["enabled"])
@@ -247,6 +251,7 @@ class ResearchModeConfigTest(unittest.TestCase):
                 async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
                     self._seed_cookie_for_manual_provider(provider_key, server, session)
                     login_result = await tron.login(session)
+
                     self.assertTrue(login_result.ok)
                     client = tron.create_tron_http_client(session)
                     result = await tron.discover_courses(

@@ -148,6 +148,18 @@ class CoursesCommandTest(unittest.IsolatedAsyncioTestCase):
         tron.CONFIG.update(
             tron.normalize_config(
                 {
+                    "provider": {
+                        "current": "thu",
+                        "available": {
+                            "thu": {
+                                "base_url": self.server.base_url,
+                                "login_url": self.server.login_url,
+                                "rollcalls_url": self.server.rollcalls_url,
+                                "current_semester_url": self.server.current_semester_url,
+                                "courses_url": self.server.courses_url,
+                            }
+                        }
+                    },
                     "account": {"user": "user1", "passwd": "pass1"},
                     "accounts": {
                         "current": "default",
