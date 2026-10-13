@@ -1385,6 +1385,42 @@ HTML_CONTENT = """<!doctype html>
     .switch.on { background: var(--violet); }
     .switch.on > span { transform: translateX(15px); background: #fff; }
 
+    /* ── Setup Alert Banner ── */
+    .setup-alert {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      background: rgba(255, 179, 64, 0.08);
+      border: 1px solid rgba(255, 179, 64, 0.28);
+      border-radius: 12px;
+    }
+    .setup-alert-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+    .setup-alert-icon { font-size: 20px; flex-shrink: 0; }
+    .setup-alert strong { font-size: 13px; color: #ffb340; display: block; }
+    .setup-alert span { font-size: 11px; color: var(--muted); display: block; margin-top: 2px; }
+    .setup-alert-btn {
+      padding: 7px 14px;
+      background: #ffb340;
+      color: #0b0f19;
+      font-weight: 700;
+      font-size: 11px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: opacity .15s;
+    }
+    .setup-alert-btn:hover { opacity: 0.88; }
+
     /* ── Toast ── */
     .toast {
       position: fixed;
@@ -1732,6 +1768,18 @@ HTML_CONTENT = """<!doctype html>
         </div>
       </div>
 
+      <!-- Setup Alert Banner -->
+      <div id="setupAlert" class="setup-alert" style="display:none;">
+        <div class="setup-alert-left">
+          <span class="setup-alert-icon">⚠️</span>
+          <div>
+            <strong>尚未設定學校登入帳號</strong>
+            <span>請先填寫學號與密碼，完成後即可啟動自動簽到監控。</span>
+          </div>
+        </div>
+        <button type="button" class="setup-alert-btn" id="goSettingsBtn">立即前往設定 →</button>
+      </div>
+
       <!-- Monitor Card -->
       <div class="monitor-card">
         <div class="monitor-glow"></div>
@@ -2033,6 +2081,10 @@ HTML_CONTENT = """<!doctype html>
             </label>
           </div>
           <button class="primary-button full" id="saveConfigBtn">儲存帳號設定</button>
+          <button class="primary-button full" id="saveAndStartBtn" style="margin-top:8px;background:linear-gradient(135deg,#27d39b,#139a6e);color:#08131d;border:none;">儲存並立即啟動監控</button>
+          <div style="font-size:10px;color:var(--muted);margin-top:10px;line-height:1.4;">
+            💡 提示：設定將安全保存在本機瀏覽器與本次連線中，不會上傳至公開伺服器。
+          </div>
         </div>
 
 
@@ -2083,14 +2135,39 @@ allNavItems.forEach(b => b.addEventListener('click', () => switchView(b.dataset.
 let toastTimer;
 function showToast(title, detail = '', type = 'ok') {
   const t = document.getElementById('toast');
-  t.querySelector('span').textContent = type === 'err' ? '✗' : '✓';
+  const span = t.querySelector('span');
+  if (type === 'err') {
+    span.textContent = '✗';
+    span.style.color = '#ff687c';
+    t.style.borderColor = 'rgba(255,104,124,.35)';
+    t.style.background  = '#2a1515';
+  } else if (type === 'warn') {
+    span.textContent = '⚠️';
+    span.style.color = '#ffb340';
+    t.style.borderColor = 'rgba(255,179,64,.35)';
+    t.style.background  = '#261f14';
+  } else {
+    span.textContent = '✓';
+    span.style.color = 'var(--mint)';
+    t.style.borderColor = 'rgba(39,211,155,.28)';
+    t.style.background  = '#152a2a';
+  }
   document.getElementById('toastTitle').textContent = title;
   document.getElementById('toastDetail').textContent = detail;
-  t.style.borderColor = type === 'err' ? 'rgba(255,104,124,.28)' : 'rgba(39,211,155,.28)';
-  t.style.background  = type === 'err' ? '#2a1515' : '#152a2a';
   t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+const goSetBtn = document.getElementById('goSettingsBtn');
+if (goSetBtn) {
+  goSetBtn.addEventListener('click', () => {
+    switchView('settings');
+    setTimeout(() => {
+      const u = document.getElementById('userVal');
+      if (u) { u.focus(); u.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    }, 200);
+  });
 }
 
 // ── Time update ──
@@ -2319,11 +2396,32 @@ async function fetchConfig() {
     const data = await res.json();
     if (!data.ok) return;
 
-    document.getElementById('userVal').value      = data.config.user   || '';
-    document.getElementById('passwdVal').value    = data.config.passwd || '';
-    document.getElementById('schoolSelect').value = data.config.school || 'tku';
+    let user   = data.config.user || '';
+    let passwd = data.config.passwd || '';
+    let school = data.config.school || 'tku';
 
-    updateProfileBanner(data.config.user, data.config.school);
+    // If server has no credentials, attempt restoring from localStorage
+    if (!user || user === 'YOUR_STUDENT_ID') {
+      const localUser   = localStorage.getItem('auto_rollcall_user');
+      const localPasswd = localStorage.getItem('auto_rollcall_passwd');
+      const localSchool = localStorage.getItem('auto_rollcall_school');
+      if (localUser && localPasswd) {
+        user = localUser;
+        passwd = localPasswd;
+        if (localSchool) school = localSchool;
+        fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user, passwd, school })
+        }).catch(() => {});
+      }
+    }
+
+    document.getElementById('userVal').value      = (user && user !== 'YOUR_STUDENT_ID') ? user : '';
+    document.getElementById('passwdVal').value    = (passwd && passwd !== 'YOUR_PASSWORD') ? passwd : '';
+    document.getElementById('schoolSelect').value = school;
+
+    updateProfileBanner(user, school);
 
     if (data.config.auto_schedule_enabled !== undefined) {
       const sw = document.getElementById('autoScheduleSwitch');
@@ -2357,20 +2455,27 @@ async function fetchConfig() {
 }
 
 function updateProfileBanner(user, school) {
+  const isReal = !!(user && user !== 'YOUR_STUDENT_ID');
   const schoolMap = { tku:'淡江大學', thu:'東海大學', tronclass:'TronClass' };
   const schoolName = schoolMap[school] || school || '--';
-  const initials = school ? school.substring(0,2).toUpperCase() : '--';
+  const initials = isReal ? (school ? school.substring(0,2).toUpperCase() : 'TK') : '--';
 
   document.getElementById('profileAvatar').textContent  = initials;
   document.getElementById('sidebarAvatar').textContent  = initials;
   document.getElementById('profileSchoolName').textContent = schoolName;
   document.getElementById('sidebarSchool').textContent  = schoolName;
-  document.getElementById('profileUserId').textContent  = user || '未設定帳號';
-  document.getElementById('sidebarUser').textContent    = user || '未設定';
-  document.getElementById('profileDesc').textContent    = user ? `${schoolName} iClass 帳號` : '請填寫下方表單並儲存';
+  document.getElementById('profileUserId').textContent  = isReal ? user : '未設定帳號';
+  document.getElementById('sidebarUser').textContent    = isReal ? user : '未設定';
+  document.getElementById('profileDesc').textContent    = isReal ? `${schoolName} iClass 帳號` : '請填寫下方表單並儲存';
 
   const online = document.getElementById('sidebarOnline');
-  online.style.background = user ? 'var(--mint)' : 'var(--subtle)';
+  if (online) online.style.background = isReal ? 'var(--mint)' : 'var(--subtle)';
+
+  const setupAlert = document.getElementById('setupAlert');
+  if (setupAlert) setupAlert.style.display = isReal ? 'none' : 'flex';
+
+  const connected = document.getElementById('connectedLabel');
+  if (connected) connected.style.display = isReal ? 'flex' : 'none';
 }
 
 // ── Fetch Status ──
@@ -2490,23 +2595,49 @@ function escHtml(t) {
 }
 
 // ── Save Config ──
-document.getElementById('saveConfigBtn').addEventListener('click', async () => {
+async function performSaveConfig(silent = false) {
   const user   = document.getElementById('userVal').value.trim();
   const passwd = document.getElementById('passwdVal').value.trim();
   const school = document.getElementById('schoolSelect').value;
-  if (!user || !passwd) { showToast('帳號與密碼不能為空', '', 'err'); return; }
+  if (!user || !passwd) { showToast('帳號與密碼不能為空', '', 'err'); return false; }
   try {
     const res  = await fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user,passwd,school}) });
     const data = await res.json();
     if (data.ok) {
-      showToast('帳號設定已儲存', '設定已同步至本次 Session');
+      localStorage.setItem('auto_rollcall_user', user);
+      localStorage.setItem('auto_rollcall_passwd', passwd);
+      localStorage.setItem('auto_rollcall_school', school);
       updateProfileBanner(user, school);
       document.getElementById('savedLabel').style.display = 'flex';
+      if (!silent) showToast('帳號設定已儲存', '設定已同步至本次 Session');
+      return true;
     } else {
       showToast('儲存失敗', data.error || '', 'err');
+      return false;
     }
-  } catch(e) { showToast('網路連線錯誤', '', 'err'); }
-});
+  } catch(e) {
+    showToast('網路連線錯誤', '', 'err');
+    return false;
+  }
+}
+
+document.getElementById('saveConfigBtn').addEventListener('click', () => performSaveConfig(false));
+
+const saveAndStart = document.getElementById('saveAndStartBtn');
+if (saveAndStart) {
+  saveAndStart.addEventListener('click', async () => {
+    const ok = await performSaveConfig(true);
+    if (!ok) return;
+    showToast('帳號已設定完成', '正在為您切換至控制台並啟動監控...');
+    switchView('dashboard');
+    if (!isRunning) {
+      setTimeout(() => {
+        const tb = document.getElementById('toggleBtn');
+        if (tb) tb.click();
+      }, 350);
+    }
+  });
+}
 
 // ── Save Schedule ──
 document.getElementById('saveScheduleBtn').addEventListener('click', async () => {
@@ -2644,7 +2775,18 @@ document.getElementById('toggleBtn').addEventListener('click', async () => {
     const user   = document.getElementById('userVal').value.trim();
     const passwd = document.getElementById('passwdVal').value.trim();
     const school = document.getElementById('schoolSelect').value;
-    if (!user || !passwd) { showToast('學號與密碼不能為空', '', 'err'); return; }
+    const isRealUser   = !!(user && user !== 'YOUR_STUDENT_ID');
+    const isRealPasswd = !!(passwd && passwd !== 'YOUR_PASSWORD');
+
+    if (!isRealUser || !isRealPasswd) {
+      showToast('尚未填寫學號與密碼', '正在為您切換至帳號設定頁面...', 'warn');
+      switchView('settings');
+      setTimeout(() => {
+        const u = document.getElementById('userVal');
+        if (u) { u.focus(); u.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      }, 250);
+      return;
+    }
 
     try {
       const cr = await fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user,passwd,school}) });
@@ -2653,7 +2795,14 @@ document.getElementById('toggleBtn').addEventListener('click', async () => {
       const operating = {};
       document.querySelectorAll('#scheduleTableBody tr[data-day]').forEach(row => {
         const day = parseInt(row.dataset.day);
-        operating[day] = { enable: !!row.querySelector('.switch.on'), range: row.querySelector('.time-input').value.trim() || '08:00 - 18:00' };
+        const sVal = (row.querySelector('.start-time') || {}).value || '08:00';
+        const eVal = (row.querySelector('.end-time') || {}).value || '18:00';
+        operating[day] = {
+          enable: !!row.querySelector('.switch.on'),
+          start: sVal,
+          end: eVal,
+          range: `${sVal} - ${eVal}`
+        };
       });
       const sr = await fetch('/api/schedule', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({operating}) });
       if (!(await sr.json()).ok) { showToast('排程自動儲存失敗','','err'); return; }
@@ -2687,6 +2836,13 @@ document.getElementById('toggleBtn').addEventListener('click', async () => {
       fetchStatus();
     } else {
       showToast('操作失敗', data.error || '', 'err');
+      if (data.error && data.error.includes('學號與密碼')) {
+        switchView('settings');
+        setTimeout(() => {
+          const u = document.getElementById('userVal');
+          if (u) { u.focus(); u.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+        }, 250);
+      }
     }
   } catch(e) { showToast('連線異常','','err'); }
   finally { btn.disabled = false; }
@@ -2694,7 +2850,13 @@ document.getElementById('toggleBtn').addEventListener('click', async () => {
 
 // ── Clear session ──
 document.getElementById('clearSessionBtn').addEventListener('click', () => {
-  showToast('Session 已清除', '下次重整頁面後生效');
+  localStorage.removeItem('auto_rollcall_user');
+  localStorage.removeItem('auto_rollcall_passwd');
+  localStorage.removeItem('auto_rollcall_school');
+  document.getElementById('userVal').value = '';
+  document.getElementById('passwdVal').value = '';
+  updateProfileBanner('', 'tku');
+  showToast('Session 與本機快取已清除', '請重新設定帳號');
 });
 
 // ── Log filter ──
@@ -2990,7 +3152,8 @@ def mock_mark_profile_error(base_dir, profile, status, message):
     return {}
 
 def mock_load_runtime_state(base_dir):
-    return ctx.AccountRuntimeSnapshot(store_status="missing")
+    from troTHU.account_runtime_store import AccountRuntimeSnapshot
+    return AccountRuntimeSnapshot(store_status="missing")
 
 def mock_log(*args, **kwargs):
     return True
@@ -3029,6 +3192,18 @@ def setup_session_isolation():
     ctx.load_runtime_state = mock_load_runtime_state
     ctx.log = mock_log
     ctx.append_gui_log = append_gui_log
+    orig_log_print = getattr(ctx, 'log_print', None)
+    def web_log_print(msg: ctx.Any) -> None:
+        try:
+            append_gui_log(str(msg))
+        except Exception:
+            pass
+        if orig_log_print:
+            try:
+                orig_log_print(msg)
+            except Exception:
+                pass
+    ctx.log_print = web_log_print
 
 
 @web.middleware
@@ -3108,11 +3283,14 @@ async def api_get_config(request):
             "range": f"{start_t} - {end_t}"
         }
 
+    user = active_profile.user if ctx.has_real_credential(active_profile.user) else ""
+    passwd = active_profile.passwd if ctx.has_real_credential(active_profile.passwd) else ""
+
     return web.json_response({
         "ok": True,
         "config": {
-            "user": active_profile.user,
-            "passwd": active_profile.passwd,
+            "user": user,
+            "passwd": passwd,
             "school": school,
             "auto_schedule_enabled": getattr(state, "auto_schedule_enabled", True),
             "operating": operating
@@ -3210,7 +3388,7 @@ async def api_start_monitor(request):
     # Ensure config has valid credentials
     active_profile = ctx.get_active_profile(ctx.CONFIG)
     if not ctx.has_real_credential(active_profile.user) or not ctx.has_real_credential(active_profile.passwd):
-        return web.json_response({"ok": False, "error": "尚未設定有效的學號與密碼"})
+        return web.json_response({"ok": False, "error": "尚未設定有效的學號與密碼，請先至「帳號設定」填寫"})
 
     auto_stop_minutes = 0
     try:
