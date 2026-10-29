@@ -170,7 +170,15 @@ class TransientCooldownTracker:
 
 
 def normalize_text(value: Any) -> str:
-    return str(value or "").strip()
+    if isinstance(value, (bytes, bytearray)):
+        try:
+            value = value.decode('utf-8', errors='replace')
+        except Exception:
+            value = str(value)
+    text = str(value or "").strip()
+    # Strip lone surrogate code points that are invalid Unicode scalar values
+    # and would break downstream JSON/protobuf serialization.
+    return "".join(ch for ch in text if not (0xD800 <= ord(ch) <= 0xDFFF))
 
 
 def coerce_bool(value: Any, default: bool) -> bool:
@@ -328,7 +336,9 @@ def make_payload_excerpt(payload: Any, limit: int = 500) -> Optional[str]:
     if isinstance(payload, str):
         text = payload
     else:
-        text = json.dumps(payload, ensure_ascii=False, default=str)
+        text = json.dumps(payload, ensure_ascii=True, default=str)
+    # Remove lone surrogate code points that are invalid Unicode scalar values.
+    text = "".join(ch for ch in text if not (0xD800 <= ord(ch) <= 0xDFFF))
     if len(text) > limit:
         return text[:limit] + "...(truncated)"
     return text

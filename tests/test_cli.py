@@ -276,28 +276,7 @@ class TronCliSmokeTest(unittest.TestCase):
         self.assertEqual(result, 0)
         app_main.assert_called_once()
 
-    def test_app_blueprint_text_command_dispatches(self) -> None:
-        outputs = []
-        with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append):
-            result = tron.main(["app", "blueprint"])
-
-        self.assertEqual(result, 0)
-        self.assertIn("optional localhost shell core available", outputs[0])
-
-    def test_app_blueprint_json_command_dispatches(self) -> None:
-        outputs = []
-        with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append):
-            result = tron.main(["app", "blueprint", "--json"])
-
-        self.assertEqual(result, 0)
-        payload = json.loads(outputs[0])
-        self.assertEqual(payload["version"], "app-blueprint-v1")
-        self.assertEqual(payload["primary_operation"], "CLI + Bot + local scanner")
-        self.assertIn("screens", payload)
-        self.assertIn("api_contract", payload)
-        self.assertTrue(payload["validation"]["ok"])
-
-    def test_app_serve_command_dispatches_without_running_server(self) -> None:
+    def test_gui_command_dispatches_without_running_server(self) -> None:
         def fake_run(coro):
             coro.close()
             return 0
@@ -306,14 +285,28 @@ class TronCliSmokeTest(unittest.TestCase):
             patch.object(tron, "bootstrap_config"),
             patch.object(tron.asyncio, "run", side_effect=fake_run) as asyncio_run,
         ):
-            result = tron.main(["app", "serve", "--port", "9999", "--json"])
+            result = tron.main(["gui", "--port", "9999", "--no-open"])
+
+        self.assertEqual(result, 0)
+        asyncio_run.assert_called_once()
+
+    def test_app_command_dispatches_gui_without_running_server(self) -> None:
+        def fake_run(coro):
+            coro.close()
+            return 0
+
+        with (
+            patch.object(tron, "bootstrap_config"),
+            patch.object(tron.asyncio, "run", side_effect=fake_run) as asyncio_run,
+        ):
+            result = tron.main(["app", "--port", "9999", "--no-open"])
 
         self.assertEqual(result, 0)
         asyncio_run.assert_called_once()
 
     def test_webview_status_json_command_dispatches_without_network(self) -> None:
         outputs = []
-        tron.CONFIG.update(tron.normalize_config({}))
+        tron.CONFIG.update(tron.normalize_config({"provider": "tku"}))
         with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append):
             result = tron.main(["webview", "status", "--json"])
 
@@ -339,7 +332,7 @@ class TronCliSmokeTest(unittest.TestCase):
                 encoding="utf-8",
             )
             outputs = []
-            tron.CONFIG.update(tron.normalize_config({}))
+            tron.CONFIG.update(tron.normalize_config({"provider": "tku"}))
             with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append):
                 result = tron.main(["webview", "preview", "--input", str(path), "--json"])
 
@@ -358,7 +351,7 @@ class TronCliSmokeTest(unittest.TestCase):
                 encoding="utf-8",
             )
             outputs = []
-            tron.CONFIG.update(tron.normalize_config({}))
+            tron.CONFIG.update(tron.normalize_config({"provider": "tku"}))
             with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append):
                 result = tron.main(["webview", "import", "--input", str(path), "--save", "--json"])
 
@@ -384,6 +377,7 @@ class TronCliSmokeTest(unittest.TestCase):
                 tron.CONFIG.update(
                     tron.normalize_config(
                         {
+                            "provider": "tku",
                             "account": {"user": "u1", "passwd": ""},
                             "accounts": {
                                 "current": "default",
@@ -438,30 +432,6 @@ class TronCliSmokeTest(unittest.TestCase):
 
 
 class TronBotServeCommandTest(unittest.IsolatedAsyncioTestCase):
-    async def test_app_serve_json_uses_local_shell_runner_without_token_output(self) -> None:
-        outputs = []
-        seen = {}
-
-        async def fake_run_app_shell(_config, **kwargs):
-            seen.update(kwargs)
-
-        with (
-            patch.object(tron, "run_app_shell", new=fake_run_app_shell),
-            patch("builtins.print", side_effect=outputs.append),
-        ):
-            result = await tron.app_serve_command(
-                SimpleNamespace(host="127.0.0.1", port=8790, open=False, ttl_seconds=120, json=True)
-            )
-
-        self.assertEqual(result, 0)
-        self.assertEqual(seen["host"], "127.0.0.1")
-        self.assertEqual(seen["port"], 8790)
-        self.assertEqual(seen["token_ttl_seconds"], 120)
-        payload = json.loads(outputs[0])
-        self.assertEqual(payload["url"], "http://127.0.0.1:8790/app")
-        self.assertNotIn("token", outputs[0].replace("token_ttl_seconds", ""))
-        self.assertIn("shell_ui_builder", seen)
-
     async def test_discord_sync_and_gateway_dry_run_dispatch(self) -> None:
         outputs = []
         with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append):

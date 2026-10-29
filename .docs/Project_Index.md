@@ -40,7 +40,7 @@ auto-rollcall-thu-tronclass/
 │   ├── cli_main.py                 ← CLI 命令路由器
 │   ├── cli_parser.py               ← argparse 命令定義
 │   ├── cli_accounts.py             ← account 子命令
-│   ├── cli_app.py                  ← app 子命令（唯讀面板）
+│   ├── cli_app.py                  ← app / gui 子命令（啟動 Web GUI 與 WebView 工具）
 │   ├── cli_bot.py                  ← bot 子命令
 │   ├── cli_courses.py              ← courses 子命令
 │   ├── cli_provider.py             ← provider 子命令
@@ -94,13 +94,9 @@ auto-rollcall-thu-tronclass/
 │   ├── providers.py                ← 學校 Provider 定義（THU/TKU/TronClass/FJU）
 │   │
 │   ├── ── Web GUI 層 ──
-│   ├── web_gui.py                  ← 🌐 Web GUI 伺服器（多用戶會話隔離）
+│   ├── web_gui.py                  ← 🌐 Web GUI 伺服器（主要互動式前端，具備多用戶會話隔離）
 │   ├── local_scanner.py            ← 本機 QR 掃描器 Web Server
-│   ├── app_shell.py                ← 唯讀狀態面板 App Shell
-│   ├── app_shell_dashboard.py      ← App Shell 儀表板
-│   ├── app_shell_polish.py         ← App Shell UI 精緻化
-│   ├── app_blueprint.py            ← App 架構藍圖生成器
-│   ├── app_qr_experience.py        ← App QR 用戶體驗流程
+│   ├── app_qr_experience.py        ← App QR 用戶體驗流程（local_scanner 依賴）
 │   │
 │   ├── ── Bot / 通知層 ──
 │   ├── bot_runtime.py              ← Bot 服務器主邏輯

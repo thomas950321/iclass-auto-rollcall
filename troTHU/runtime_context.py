@@ -85,17 +85,6 @@ try:
         binding_key,
         map_adapter_command,
     )
-    from troTHU.app_blueprint import (
-        build_app_blueprint,
-        format_app_blueprint_summary,
-        validate_app_blueprint,
-    )
-    from troTHU.app_shell import run_app_shell
-    from troTHU.app_shell_polish import (
-        build_shell_action_catalog,
-        build_shell_drilldown,
-        build_shell_ui_model,
-    )
     from troTHU.bot_runtime import normalize_admins_config
     from troTHU.connection_probe import (
         run_connection_probe,
@@ -318,17 +307,6 @@ except ImportError:
         AdapterBinding,
         binding_key,
         map_adapter_command,
-    )
-    from app_blueprint import (
-        build_app_blueprint,
-        format_app_blueprint_summary,
-        validate_app_blueprint,
-    )
-    from app_shell import run_app_shell
-    from app_shell_polish import (
-        build_shell_action_catalog,
-        build_shell_drilldown,
-        build_shell_ui_model,
     )
     from bot_runtime import normalize_admins_config
     from connection_probe import (
@@ -838,15 +816,6 @@ LAST_LOGIN_RESULT = LoginResult(status="missing_credentials", credential_source=
 TEACHER_LOGIN_RESULT = LoginResult(status="missing_credentials", credential_source="missing")
 
 _LEGACY_EXPORTS = {
-    '_app_shell_accounts': ('troTHU.cli_app', '_app_shell_accounts'),
-    '_app_shell_drilldown': ('troTHU.cli_app', '_app_shell_drilldown'),
-    '_app_shell_integrations': ('troTHU.cli_app', '_app_shell_integrations'),
-    '_app_shell_logs_summary': ('troTHU.cli_app', '_app_shell_logs_summary'),
-    '_app_shell_polish_reports': ('troTHU.cli_app', '_app_shell_polish_reports'),
-    '_app_shell_release_check': ('troTHU.cli_app', '_app_shell_release_check'),
-    '_app_shell_release_plan': ('troTHU.cli_app', '_app_shell_release_plan'),
-    '_app_shell_snapshot': ('troTHU.cli_app', '_app_shell_snapshot'),
-    '_app_shell_ui_model': ('troTHU.cli_app', '_app_shell_ui_model'),
     '_read_json_input': ('troTHU.cli_provider', '_read_json_input'),
     '_read_webview_cookie_input': ('troTHU.cli_app', '_read_webview_cookie_input'),
     '_research_gate_failure': ('troTHU.cli_research', '_research_gate_failure'),
@@ -857,13 +826,12 @@ _LEGACY_EXPORTS = {
     'account_show': ('troTHU.cli_accounts', 'account_show'),
     'account_state': ('troTHU.cli_accounts', 'account_state'),
     'account_state_report': ('troTHU.status_reports', 'account_state_report'),
-    'app_blueprint_command': ('troTHU.cli_app', 'app_blueprint_command'),
     'app_main': ('troTHU.monitor_runtime', 'app_main'),
-    'app_serve_command': ('troTHU.cli_app', 'app_serve_command'),
     'announce_rollcall_start': ('troTHU.rollcall_runtime', 'announce_rollcall_start'),
     'bind_account': ('troTHU.cli_accounts', 'bind_account'),
     'binding_summary': ('troTHU.status_reports', 'binding_summary'),
     'bootstrap_config': ('troTHU.config_runtime', 'bootstrap_config'),
+    'gui_command': ('troTHU.cli_app', 'gui_command'),
     'bot_discord_gateway_command': ('troTHU.cli_bot', 'bot_discord_gateway_command'),
     'bot_discord_schema_command': ('troTHU.cli_bot', 'bot_discord_schema_command'),
     'bot_discord_sync_command': ('troTHU.cli_bot', 'bot_discord_sync_command'),

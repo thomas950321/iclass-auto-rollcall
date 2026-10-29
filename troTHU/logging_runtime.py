@@ -211,7 +211,7 @@ def log(*, event: str, path: ctx.Optional[ctx.Path]=None, counter: int=-1, statu
         path = path or ctx.daily_log_path()
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, 'a', encoding='utf-8') as file:
-            file.write(ctx.json.dumps(data, ensure_ascii=False, default=str))
+            file.write(ctx.json.dumps(data, ensure_ascii=True, default=str))
             file.write('\n')
     except OSError as exc:
         log_print(exc)

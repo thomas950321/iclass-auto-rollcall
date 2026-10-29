@@ -1,0 +1,49 @@
+﻿# Python caches and local virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+env/
+
+# Tooling, editor, and temporary test output
+.vscode/
+.idea/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.test-deps/
+.tmp-tests/
+tmp/
+tmp*/
+
+# Environment files and local secrets
+.env
+.env.*
+*.env
+*.local
+*.local.*
+*.secret
+*.secrets
+*.token
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Local runtime state (may contain cookies, logs, validation records)
+log/
+log_/
+state/
+cookies/
+
+# Local release/build artifacts
+build/
+dist/
+*.spec.tmp
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+desktop.ini
