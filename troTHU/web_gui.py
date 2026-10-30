@@ -3564,7 +3564,54 @@ def append_gui_log(msg: str):
     ctx.GUI_LOGS.append(str(msg))
 
 
+_ORIGINAL_MODULE_CLASS = None
+_ORIGINAL_CTX_DICT = {}
+
+def teardown_session_isolation():
+    global _ORIGINAL_MODULE_CLASS, _ORIGINAL_CTX_DICT
+    if not _ORIGINAL_CTX_DICT:
+        return
+    if _ORIGINAL_MODULE_CLASS:
+        ctx.__class__ = _ORIGINAL_MODULE_CLASS
+        _ORIGINAL_MODULE_CLASS = None
+    for key, val in _ORIGINAL_CTX_DICT.items():
+        if val is not None:
+            ctx.__dict__[key] = val
+        else:
+            ctx.__dict__.pop(key, None)
+    _ORIGINAL_CTX_DICT.clear()
+
+
 def setup_session_isolation():
+    global _ORIGINAL_MODULE_CLASS, _ORIGINAL_CTX_DICT
+    if not _ORIGINAL_CTX_DICT:
+        _ORIGINAL_MODULE_CLASS = ctx.__class__
+        _ORIGINAL_CTX_DICT = {
+            'CONFIG': ctx.__dict__.get('CONFIG'),
+            'MONITOR_STATUS': ctx.__dict__.get('MONITOR_STATUS'),
+            'LAST_ROLLCALL_PROGRESS': ctx.__dict__.get('LAST_ROLLCALL_PROGRESS'),
+            'COMPLETED_NUMBER_ROLLCALLS': ctx.__dict__.get('COMPLETED_NUMBER_ROLLCALLS'),
+            'COMPLETED_RADAR_ROLLCALLS': ctx.__dict__.get('COMPLETED_RADAR_ROLLCALLS'),
+            'COMPLETED_QR_ROLLCALLS': ctx.__dict__.get('COMPLETED_QR_ROLLCALLS'),
+            'QR_ASSIST_ATTEMPTS': ctx.__dict__.get('QR_ASSIST_ATTEMPTS'),
+            'ACTIVE_TEACHER_QR_ASSISTS': ctx.__dict__.get('ACTIVE_TEACHER_QR_ASSISTS'),
+            'GUI_LOGS': ctx.__dict__.get('GUI_LOGS'),
+            'NOTIFICATION_SINKS': ctx.__dict__.get('NOTIFICATION_SINKS'),
+            'save_config': getattr(ctx, 'save_config', None),
+            'bootstrap_config': getattr(ctx, 'bootstrap_config', None),
+            'save_session_cookies': getattr(ctx, 'save_session_cookies', None),
+            'load_session_cookies': getattr(ctx, 'load_session_cookies', None),
+            'clear_session_cookies': getattr(ctx, 'clear_session_cookies', None),
+            'mark_monitor_state': getattr(ctx, 'mark_monitor_state', None),
+            'mark_login_result': getattr(ctx, 'mark_login_result', None),
+            'mark_check_result': getattr(ctx, 'mark_check_result', None),
+            'mark_profile_error': getattr(ctx, 'mark_profile_error', None),
+            'load_runtime_state': getattr(ctx, 'load_runtime_state', None),
+            'log': getattr(ctx, 'log', None),
+            'append_gui_log': getattr(ctx, 'append_gui_log', None),
+            'log_print': getattr(ctx, 'log_print', None),
+        }
+
     # 1. Install module subclass
     ctx.__class__ = SessionIsolatedModule
     

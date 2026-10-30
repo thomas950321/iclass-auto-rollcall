@@ -5,6 +5,10 @@ import troTHU.runtime_context as ctx
 import troTHU.web_gui as web_gui
 
 class TestSessionIsolation(unittest.TestCase):
+    @classmethod
+    def tearDownClass(cls):
+        web_gui.teardown_session_isolation()
+
     def setUp(self):
         # Initialize session isolation setup
         web_gui.setup_session_isolation()
