@@ -1,4 +1,4 @@
-import copy
+﻿import copy
 import json
 import shutil
 import unittest
@@ -15,7 +15,7 @@ except (ImportError, ModuleNotFoundError):
     web = None
 
 from troTHU import tron, tron_http, radar_runtime
-from tests.fake_tron_server import FakeTronServer
+from tests.helpers.fake_tron_server import FakeTronServer
 
 TEST_WORKSPACE_DIR = Path(__file__).resolve().parents[1]
 
@@ -318,3 +318,4 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

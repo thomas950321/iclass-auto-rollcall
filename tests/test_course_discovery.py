@@ -1,4 +1,4 @@
-import copy
+﻿import copy
 import json
 import tempfile
 import unittest
@@ -19,7 +19,7 @@ from troTHU.course_discovery import (
     parse_courses,
     parse_semester_info,
 )
-from tests.fake_tron_server import FakeTronServer
+from tests.helpers.fake_tron_server import FakeTronServer
 
 
 class CourseDiscoveryParserTest(unittest.TestCase):
@@ -203,3 +203,4 @@ class CoursesCommandTest(unittest.IsolatedAsyncioTestCase):
         payload = json.loads(output[0])
         self.assertEqual(payload["status"], "login_failed")
         self.assertNotIn("wrong", json.dumps(payload))
+

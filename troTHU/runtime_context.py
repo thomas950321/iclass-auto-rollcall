@@ -598,7 +598,7 @@ DEFAULT_CONFIG = {
                 "user": "YOUR_STUDENT_ID",
                 "passwd": "YOUR_PASSWORD",
                 "label": "legacy config",
-                "school": "thu",
+                "school": "tku",
             },
         },
     },

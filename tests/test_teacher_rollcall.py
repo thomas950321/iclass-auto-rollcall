@@ -1,4 +1,4 @@
-import unittest
+﻿import unittest
 
 try:
     import aiohttp
@@ -13,7 +13,7 @@ from troTHU.teacher_rollcall import (
     normalize_rollcall_kind,
     teacher_stop_path,
 )
-from tests.fake_tron_server import FakeTronServer
+from tests.helpers.fake_tron_server import FakeTronServer
 
 
 class TeacherRollcallHelperTest(unittest.TestCase):
@@ -146,3 +146,4 @@ class TeacherRollcallHttpTest(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

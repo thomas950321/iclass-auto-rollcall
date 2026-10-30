@@ -60,8 +60,6 @@ def provider_guard_result(action: str) -> ctx.Optional[ctx.LoginResult]:
 
 def get_active_http_endpoints():
     active = ctx.get_active_provider_config()
-    if active.get('key') == ctx.DEFAULT_PROVIDER:
-        return ctx.default_endpoints()
     return ctx.endpoints_from_provider(active)
 
 

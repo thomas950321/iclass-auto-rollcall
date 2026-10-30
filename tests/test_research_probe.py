@@ -1,4 +1,4 @@
-import asyncio
+﻿import asyncio
 import copy
 import json
 import unittest
@@ -9,7 +9,7 @@ import aiohttp
 
 from troTHU import tron
 from troTHU.research_sandbox import capture_rollcall_probe, capture_student_rollcalls_probe
-from tests.fake_tron_server import FakeTronServer
+from tests.helpers.fake_tron_server import FakeTronServer
 
 
 # Realistic QR `data` token shape observed in real check-ins: a 10-digit unix
@@ -229,3 +229,4 @@ class ResearchProbeCliTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

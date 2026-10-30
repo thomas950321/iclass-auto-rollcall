@@ -1,4 +1,4 @@
-import asyncio
+﻿import asyncio
 import copy
 import json
 import shutil
@@ -23,7 +23,7 @@ from troTHU.research_sandbox import (
     sanitize_research_value,
     validate_research_target,
 )
-from tests.fake_tron_server import FakeTronServer
+from tests.helpers.fake_tron_server import FakeTronServer
 
 
 TEST_WORKSPACE_DIR = Path(__file__).resolve().parents[1]
@@ -269,3 +269,4 @@ class ResearchCliTest(unittest.TestCase):
         self.assertNotIn("pass1", rendered)
         self.assertNotIn("local-test-session", rendered)
         self.assertNotIn("0001", rendered)
+

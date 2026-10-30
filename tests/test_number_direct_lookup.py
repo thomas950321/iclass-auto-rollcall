@@ -1,11 +1,11 @@
-import copy
+﻿import copy
 import unittest
 import unittest.mock
 
 import aiohttp
 
 from troTHU import tron
-from tests.fake_tron_server import FakeTronServer
+from tests.helpers.fake_tron_server import FakeTronServer
 
 
 def _configure_provider_for_fake_server(provider_key: str, server: FakeTronServer) -> None:
@@ -102,3 +102,4 @@ class NumberDirectLookupTest(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

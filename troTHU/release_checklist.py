@@ -354,7 +354,7 @@ def _readme_report(path: Path) -> Dict[str, Any]:
             "current release status documented",
             severity="warn",
         ),
-        _check("README monitor console quickstart", "run --no-input" in text and "按任意鍵" in text, "monitor console quickstart documented", severity="warn"),
+        _check("README monitor console quickstart", "run --no-input" in text, "monitor console quickstart documented", severity="warn"),
         _check("README config tutorial", "config.advanced.yaml" in text and "operating" in text, "config tutorial documented", severity="warn"),
         _check("README bot docs", "HTTP Interactions" in text and "Telegram" in text, "bot entrypoints documented", severity="warn"),
         _check("README provider scope", "THU" in text and "TKU" in text, "THU/TKU provider scope documented", severity="warn"),

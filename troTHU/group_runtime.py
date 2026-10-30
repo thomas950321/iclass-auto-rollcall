@@ -9,7 +9,7 @@ except ImportError:  # pragma: no cover - direct script fallback
 
 
 def _school(value: ctx.Any) -> str:
-    return ctx.normalize_text(value).lower() or "thu"
+    return ctx.normalize_text(value).lower() or "tku"
 
 
 def _simple_meta(config: ctx.Mapping[str, ctx.Any]) -> ctx.Dict[str, ctx.Any]:
@@ -28,7 +28,7 @@ def resolve_now_target(config: ctx.Mapping[str, ctx.Any]) -> ctx.Dict[str, ctx.A
             school = _school(
                 next(
                     (item.get("school") for item in accounts if ctx.normalize_text(item.get("user")).lower() == inferred.lower()),
-                    "thu",
+                    "tku",
                 )
             )
             return {"ok": True, "kind": "account", "user": inferred, "school": school, "inferred": True}

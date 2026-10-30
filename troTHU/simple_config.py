@@ -11,7 +11,7 @@ except ImportError:  # pragma: no cover - direct script fallback
 PLACEHOLDER_PREFIXES = ("(", "（")
 SIMPLE_WEEKDAY_TO_INTERNAL = {0: 6, 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5}
 INTERNAL_WEEKDAY_TO_SIMPLE = {value: key for key, value in SIMPLE_WEEKDAY_TO_INTERNAL.items()}
-VISIBLE_DEFAULT_SCHOOLS = ("THU", "TKU", "TRONCLASS")
+VISIBLE_DEFAULT_SCHOOLS = ("TKU", "THU", "TRONCLASS")
 
 
 def _strip_value(value: ctx.Any) -> str:
@@ -53,10 +53,10 @@ def _canonical_school(value: ctx.Any) -> str:
         "官方": "tronclass",
         "官方站": "tronclass",
     }
-    return aliases.get(school, school or "thu")
+    return aliases.get(school, school or "tku")
 
 
-def _profile_school(profile: ctx.Mapping[str, ctx.Any], default: str = "thu") -> str:
+def _profile_school(profile: ctx.Mapping[str, ctx.Any], default: str = "tku") -> str:
     for key in ("school", "label"):
         school = _canonical_school(profile.get(key))
         if school in {"thu", "tku", "fju", "tronclass"}:
@@ -189,10 +189,10 @@ def parse_simple_config_text(text: str) -> ctx.Dict[str, ctx.Any]:
             if key == "user":
                 if current_account is not None and any(current_account.get(item) for item in ("user", "passwd", "school")):
                     finish_account()
-                current_account = {"user": value, "passwd": "", "school": "thu"}
+                current_account = {"user": value, "passwd": "", "school": "tku"}
                 continue
             if current_account is None:
-                current_account = {"user": "", "passwd": "", "school": "thu"}
+                current_account = {"user": "", "passwd": "", "school": "tku"}
             if key in {"passwd", "password"}:
                 current_account["passwd"] = value
             elif key == "school":
@@ -215,10 +215,10 @@ def parse_simple_config_text(text: str) -> ctx.Dict[str, ctx.Any]:
         if section == "group":
             if key == "class":
                 finish_group()
-                current_group = {"class": value, "school": "thu", "users": []}
+                current_group = {"class": value, "school": "tku", "users": []}
                 continue
             if current_group is None:
-                current_group = {"class": "", "school": "thu", "users": []}
+                current_group = {"class": "", "school": "tku", "users": []}
             if key == "school":
                 current_group["school"] = _canonical_school(value)
             elif key == "user":
@@ -319,14 +319,14 @@ def merge_simple_and_advanced_config(simple: ctx.Mapping[str, ctx.Any], advanced
         }
     current = account["user"] if account["user"] in profiles else ""
     if not profiles:
-        profiles["default"] = {"user": "", "passwd": "", "label": "", "school": "thu"}
+        profiles["default"] = {"user": "", "passwd": "", "label": "", "school": "tku"}
         current = "default"
     elif not current:
-        profiles.setdefault("unset", {"user": "", "passwd": "", "label": "", "school": account["school"] or "thu"})
+        profiles.setdefault("unset", {"user": "", "passwd": "", "label": "", "school": account["school"] or "tku"})
         current = "unset"
     config["accounts"] = {"current": current, "profiles": profiles}
     provider = dict(config.get("provider", {})) if isinstance(config.get("provider"), dict) else {}
-    provider["current"] = account["school"] or provider.get("current") or "thu"
+    provider["current"] = account["school"] or provider.get("current") or "tku"
     config["provider"] = provider
     operating: ctx.Dict[int, ctx.Any] = {}
     for simple_day, entry in (simple.get("operating") or {}).items():
@@ -433,14 +433,14 @@ def render_simple_config(config: ctx.Mapping[str, ctx.Any] | None = None) -> str
         accounts.append({"user": "", "passwd": "", "school": VISIBLE_DEFAULT_SCHOOLS[index - 1]})
     groups = list(simple.get("groups") or [])
     while len(groups) < 2:
-        groups.append({"class": "A" if not groups else "B", "school": "THU", "users": [""]})
+        groups.append({"class": "A" if not groups else "B", "school": "TKU", "users": [""]})
     lines = ["now:{}".format(simple.get("now") or "(填帳號或 class A)"), "", "account:"]
     for index, account in enumerate(accounts, start=1):
         lines.extend(
             [
                 "  user:{}".format(account.get("user") or "(帳號{})".format(index)),
                 "  passwd:{}".format(account.get("passwd") or "(密碼{})".format(index)),
-                "  school:{}".format((_canonical_school(account.get("school")) or "thu").upper()),
+                "  school:{}".format((_canonical_school(account.get("school")) or "tku").upper()),
                 "",
             ]
         )
@@ -459,7 +459,7 @@ def render_simple_config(config: ctx.Mapping[str, ctx.Any] | None = None) -> str
     for group in groups:
         class_name = group.get("class") or ("A" if len(lines) == 0 else "B")
         lines.append("  class:{}".format(class_name))
-        lines.append("    school:{}".format((_canonical_school(group.get("school")) or "thu").upper()))
+        lines.append("    school:{}".format((_canonical_school(group.get("school")) or "tku").upper()))
         users = list(group.get("users") or [""])
         if not users:
             users = [""]

@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Mapping
 
 
-DEFAULT_PROVIDER = "thu"
+DEFAULT_PROVIDER = "tku"
 
 
 @dataclass(frozen=True)

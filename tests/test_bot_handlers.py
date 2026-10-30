@@ -1,4 +1,4 @@
-import copy
+﻿import copy
 import json
 import shutil
 import unittest
@@ -13,7 +13,7 @@ except (ImportError, ModuleNotFoundError):
     aiohttp = None
     web = None
 
-from tests.fake_tron_server import FakeTronServer
+from tests.helpers.fake_tron_server import FakeTronServer
 from troTHU import tron
 from troTHU.account_runtime_store import load_runtime_state
 from troTHU.account_store import cookie_path
@@ -273,3 +273,4 @@ class BotHandlersTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([item.profile for item in list_pending_qr(self.temp_dir)], ["default"])
         self.assertEqual(tron.CONFIG["accounts"]["current"], "default")
         self.assertNotIn("fixture", str(result.to_dict()))
+

@@ -8,6 +8,12 @@ import time
 import copy
 from aiohttp import web
 import troTHU.runtime_context as ctx
+from troTHU.web_gui_qr import (
+    build_web_gui_qr_preview,
+    run_single_account_qr_submit,
+    run_multi_account_qr_submit,
+    run_web_gui_qr_submit,
+)
 
 
 # Global task tracker
@@ -1445,6 +1451,58 @@ HTML_CONTENT = """<!doctype html>
     .toast strong { font-size: 11px; }
     .toast small  { color: #86a59f; font-size: 10px; }
 
+    /* ── QR Scanner ── */
+    .qr-video {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      border-radius: 12px;
+      background: #080c16;
+      border: 1px solid var(--line);
+      margin: 12px 0;
+    }
+    .qr-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+    .qr-payload {
+      width: 100%;
+      min-height: 88px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--surface2);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      resize: vertical;
+    }
+    .qr-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin: 14px 0;
+    }
+    .qr-card h2 { font-size: 13px; margin-bottom: 8px; }
+    .qr-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      font-size: 10px;
+      color: var(--muted);
+    }
+    .qr-badge.ok { background: rgba(39,211,155,.16); color: var(--mint); }
+    .qr-badge.warn { background: rgba(245,185,77,.16); color: var(--amber); }
+    .qr-badge.fail { background: rgba(255,104,124,.16); color: var(--red); }
+    .qr-hint { font-size: 11px; color: var(--muted); line-height: 1.5; margin-top: 6px; }
+    .qr-file { display: none; }
+    .secondary-button {
+      padding: 9px 14px;
+      border-radius: 8px;
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      font-weight: 600;
+      font-size: 12px;
+    }
+
     /* ── Bottom Nav (mobile only) ── */
     .bottom-nav { display: none; }
 
@@ -1720,6 +1778,7 @@ HTML_CONTENT = """<!doctype html>
     <div class="sidebar-label">工作區</div>
     <nav class="side-nav">
       <button class="nav-item active" data-view="dashboard"><span class="nav-icon">⌂</span><span>控制台</span></button>
+      <button class="nav-item" data-view="qr"><span class="nav-icon">▣</span><span>QR 掃描</span></button>
       <button class="nav-item" data-view="schedule"><span class="nav-icon">◷</span><span>上課排程</span></button>
       <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span><span>帳號設定</span></button>
     </nav>
@@ -1895,6 +1954,77 @@ HTML_CONTENT = """<!doctype html>
             <div style="font-size:10px;color:var(--subtle);padding:8px 0;">請前往「排程」頁面設定上課時間。</div>
           </div>
           <button class="outline-button" data-view="schedule">管理完整排程 <span>→</span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════ QR Scanner View ═══════ -->
+    <section class="view" id="qr-view">
+      <div class="page-heading compact">
+        <div>
+          <p class="eyebrow">教室簽到</p>
+          <h1>QR 掃描</h1>
+          <p class="heading-copy">用目前這個帳號掃描老師的點名 QR。只會幫你自己簽到。</p>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-heading">
+          <div>
+            <span class="section-eyebrow">CAMERA</span>
+            <h3>掃描或貼上</h3>
+          </div>
+          <span id="qrMode" class="qr-badge">idle</span>
+        </div>
+        <video id="qrVideo" class="qr-video" playsinline muted></video>
+        <div class="qr-row">
+          <button class="primary-button" id="qrStartCam" style="padding:9px 14px;font-size:12px;">啟動相機</button>
+          <button class="secondary-button" id="qrStopCam">停止</button>
+          <button class="secondary-button" id="qrCaptureBtn">拍照 / 選圖</button>
+          <input id="qrFile" class="qr-file" type="file" accept="image/*" capture="environment">
+        </div>
+        <p class="qr-hint" id="qrCameraHint">區網 HTTP 可能無法開即時鏡頭，請改用拍照或貼上 QR 內容。</p>
+        <textarea id="qrPayload" class="qr-payload" placeholder="也可以直接貼上 QR URL / payload"></textarea>
+        <div class="qr-row">
+          <button class="secondary-button" id="qrPreviewBtn">Preview</button>
+          <button class="primary-button" id="qrSubmitBtn" style="padding:9px 14px;font-size:12px;">確認送出（僅自己）</button>
+        </div>
+        <div class="qr-grid">
+          <div class="panel qr-card" style="padding:12px;">
+            <h2>Preview</h2>
+            <span id="qrPreviewBadge" class="qr-badge">idle</span>
+            <p id="qrPreviewSummary" class="qr-hint">等待 QR 內容。</p>
+          </div>
+          <div class="panel qr-card" style="padding:12px;">
+            <h2>Result</h2>
+            <span id="qrResultBadge" class="qr-badge">idle</span>
+            <p id="qrResultSummary" class="qr-hint">相機掃到合法點名 QR 會立刻用目前帳號送出。</p>
+          </div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:12px;">
+        <div class="panel-heading">
+          <div>
+            <span class="section-eyebrow">ACCOUNTS</span>
+            <h3>簽到名單（掃一次多人簽到）</h3>
+          </div>
+          <span id="qrAccountCount" class="qr-badge">0</span>
+        </div>
+        <div class="qr-row">
+          <select id="qrModeSelect" class="qr-payload" style="min-height:32px;">
+            <option value="single">只簽自己</option>
+            <option value="all">簽到名單所有人</option>
+          </select>
+          <button class="primary-button" id="qrSubmitAllBtn" style="padding:9px 14px;font-size:12px;">送出（依模式）</button>
+        </div>
+        <div id="qrAccountList" class="qr-hint"></div>
+        <div class="qr-grid" style="margin-top:8px;">
+          <input id="qrNewName" class="qr-payload" style="min-height:32px;" placeholder="名稱（如：王小明）">
+          <input id="qrNewUser" class="qr-payload" style="min-height:32px;" placeholder="學號/帳號">
+          <input id="qrNewPass" class="qr-payload" style="min-height:32px;" type="password" placeholder="密碼">
+          <input id="qrNewSchool" class="qr-payload" style="min-height:32px;" placeholder="學校代碼（如 tku）">
+        </div>
+        <div class="qr-row">
+          <button class="secondary-button" id="qrAddAccountBtn">加入帳號</button>
         </div>
       </div>
     </section>
@@ -2103,6 +2233,7 @@ HTML_CONTENT = """<!doctype html>
     <!-- Bottom Nav (mobile) -->
     <nav class="bottom-nav" aria-label="行動版導覽">
       <button class="nav-item active" data-view="dashboard"><span class="nav-icon">⌂</span><span>控制台</span></button>
+      <button class="nav-item" data-view="qr"><span class="nav-icon">▣</span><span>QR</span></button>
       <button class="nav-item" data-view="schedule"><span class="nav-icon">◷</span><span>排程</span></button>
       <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span><span>設定</span></button>
     </nav>
@@ -2124,7 +2255,7 @@ var timerEndAt = null;
 var timerInterval = null;
 
 // ── View switching ──
-const VIEWS = { dashboard:'控制台', schedule:'上課排程', settings:'帳號設定' };
+const VIEWS = { dashboard:'控制台', qr:'QR 掃描', schedule:'上課排程', settings:'帳號設定' };
 const allNavItems = document.querySelectorAll('[data-view]');
 const viewSections = document.querySelectorAll('.view');
 
@@ -2137,6 +2268,7 @@ function switchView(name) {
     history.replaceState(null, '', '#' + name);
   }
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (name !== 'qr' && typeof stopQrCamera === 'function') stopQrCamera();
 }
 
 function handleHash() {
@@ -2869,6 +3001,264 @@ document.getElementById('clearSessionBtn').addEventListener('click', () => {
 // ── Log filter ──
 document.getElementById('logFilter').addEventListener('input', () => fetchStatus());
 
+// ── Single-account QR scanner ──
+const qrVideo = document.getElementById('qrVideo');
+const qrPayload = document.getElementById('qrPayload');
+const qrMode = document.getElementById('qrMode');
+const qrPreviewBadge = document.getElementById('qrPreviewBadge');
+const qrResultBadge = document.getElementById('qrResultBadge');
+const qrPreviewSummary = document.getElementById('qrPreviewSummary');
+const qrResultSummary = document.getElementById('qrResultSummary');
+const qrCameraHint = document.getElementById('qrCameraHint');
+const qrFile = document.getElementById('qrFile');
+let qrStream = null;
+let qrTimer = null;
+let qrDetector = null;
+let qrBusy = false;
+let qrLastSuccessHash = '';
+let qrLastDetect = '';
+
+function qrBadgeClass(view) {
+  if (!view) return 'qr-badge';
+  if (view.ok || view.state === 'submitted' || view.state === 'preview_ok') return 'qr-badge ok';
+  if (view.state === 'idle' || view.state === 'submitting') return 'qr-badge warn';
+  return 'qr-badge fail';
+}
+
+function applyQrView(value, target) {
+  const view = value && value.view_state ? value.view_state : value;
+  if (!view || !view.state) return;
+  const text = (view.state || '-') + ' / rollcall ' + (view.rollcall_id || '-') + (view.diagnostic && view.diagnostic.qr_hash ? ' / ' + view.diagnostic.qr_hash : '');
+  if (String(view.state).startsWith('preview') || target === 'preview') {
+    qrPreviewBadge.className = qrBadgeClass(view);
+    qrPreviewBadge.textContent = view.state;
+    qrPreviewSummary.textContent = view.error || text;
+  } else {
+    qrResultBadge.className = qrBadgeClass(view);
+    qrResultBadge.textContent = view.state;
+    qrResultSummary.textContent = view.error || view.message || text;
+  }
+}
+
+async function postQr(path, body) {
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body || {})
+  });
+  const text = await res.text();
+  try { return JSON.parse(text); } catch (err) { return {ok: false, error: text || String(err)}; }
+}
+
+async function previewQr() {
+  const text = (qrPayload.value || '').trim();
+  if (!text) {
+    qrPreviewSummary.textContent = '沒有 QR 內容。';
+    return null;
+  }
+  const value = await postQr('/api/qr/preview', {payload: text});
+  applyQrView(value, 'preview');
+  return value;
+}
+
+async function submitQr(auto) {
+  const text = (qrPayload.value || '').trim();
+  if (!text) {
+    qrResultSummary.textContent = '沒有 QR 內容。';
+    return;
+  }
+  if (qrBusy) return;
+  qrBusy = true;
+  qrMode.textContent = 'submitting';
+  const modeSel = document.getElementById('qrModeSelect');
+  const mode = (modeSel && modeSel.value) || 'single';
+  try {
+    const value = await postQr('/api/qr/submit', {payload: text, mode: mode});
+    applyQrView(value, 'result');
+    const resultHash = value && (value.qr_hash || (value.view_state && value.view_state.diagnostic && value.view_state.diagnostic.qr_hash));
+    if (resultHash && (value.ok || value.status === 'already_submitted')) {
+      qrLastSuccessHash = resultHash;
+    }
+    if (value && value.status === 'missing_credentials') {
+      showToast('請先設定帳號', value.error || '', 'warn');
+    } else if (value && value.ok) {
+      showToast(value.status === 'already_submitted' ? '已送出過' : '簽到已送出', mode === 'all' ? '多人簽到' : '目前帳號', 'ok');
+    } else if (value && !value.ok && !auto) {
+      showToast('簽到失敗', value.error || value.status || '', 'err');
+    }
+    if (value && Array.isArray(value.results)) {
+      const lines = value.results.map(r => (r.profile || '-') + ': ' + (r.ok ? 'ok' : (r.error || r.status || 'failed')));
+      qrResultSummary.textContent = lines.join(' | ') || qrResultSummary.textContent;
+    }
+  } finally {
+    qrBusy = false;
+  }
+}
+
+async function loadQrAccounts() {
+  try {
+    const res = await fetch('/api/qr/accounts');
+    const data = await res.json();
+    const list = (data && data.accounts) || [];
+    const el = document.getElementById('qrAccountList');
+    const count = document.getElementById('qrAccountCount');
+    if (count) count.textContent = list.length;
+    if (el) {
+      if (!list.length) el.textContent = '尚未加入任何帳號。';
+      else el.innerHTML = list.map(a => '<div>' + (a.label || a.name) + ' (' + (a.user_masked || '') + ') ' +
+        '<button data-del="' + a.name + '" style="margin-left:6px;">刪除</button></div>').join('');
+      el.querySelectorAll('button[data-del]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          await fetch('/api/qr/accounts/' + encodeURIComponent(btn.getAttribute('data-del')), {method:'DELETE'});
+          loadQrAccounts();
+        });
+      });
+    }
+  } catch (e) {}
+}
+
+async function addQrAccount() {
+  const name = (document.getElementById('qrNewName').value || '').trim();
+  const user = (document.getElementById('qrNewUser').value || '').trim();
+  const passwd = (document.getElementById('qrNewPass').value || '').trim();
+  const school = (document.getElementById('qrNewSchool').value || 'tku').trim();
+  if (!name || !user || !passwd) { showToast('請填完整', '', 'warn'); return; }
+  const res = await fetch('/api/qr/accounts', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({name, user, passwd, school, label: name})
+  });
+  const data = await res.json();
+  if (data && data.ok) {
+    document.getElementById('qrNewName').value = '';
+    document.getElementById('qrNewUser').value = '';
+    document.getElementById('qrNewPass').value = '';
+    loadQrAccounts();
+    showToast('已加入帳號', name, 'ok');
+  } else {
+    showToast('加入失敗', (data && data.error) || '', 'err');
+  }
+}
+
+async function onDetectedPayload(raw, autoSubmit) {
+  const text = String(raw || '').trim();
+  if (!text || text === qrLastDetect) return;
+  qrLastDetect = text;
+  qrPayload.value = text;
+  qrMode.textContent = 'detected';
+  const preview = await previewQr();
+  if (autoSubmit && preview && preview.ok) {
+    await submitQr(true);
+  }
+}
+
+function secureCameraContext() {
+  return window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+}
+
+async function ensureJsQR() {
+  if (window.jsQR) return window.jsQR;
+  await new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+  return window.jsQR;
+}
+
+async function decodeQrFromImage(image) {
+  if ('BarcodeDetector' in window) {
+    try {
+      const detector = new BarcodeDetector({formats: ['qr_code']});
+      const codes = await detector.detect(image);
+      if (codes.length && codes[0].rawValue) return codes[0].rawValue;
+    } catch (err) {}
+  }
+  try {
+    const jsQR = await ensureJsQR();
+    const canvas = document.createElement('canvas');
+    const width = image.naturalWidth || image.videoWidth || image.width;
+    const height = image.naturalHeight || image.videoHeight || image.height;
+    canvas.width = width;
+    canvas.height = height;
+    const ctx2d = canvas.getContext('2d');
+    ctx2d.drawImage(image, 0, 0, width, height);
+    const pixels = ctx2d.getImageData(0, 0, width, height);
+    const code = jsQR(pixels.data, width, height);
+    if (code && code.data) return code.data;
+  } catch (err) {}
+  return '';
+}
+
+async function startQrCamera() {
+  if (!secureCameraContext() || !('BarcodeDetector' in window) || !navigator.mediaDevices) {
+    qrMode.textContent = 'paste fallback';
+    qrCameraHint.textContent = '這個瀏覽器或 HTTP 區網無法開即時鏡頭，請改用拍照或貼上。';
+    qrFile.click();
+    return;
+  }
+  try {
+    qrDetector = new BarcodeDetector({formats: ['qr_code']});
+    qrStream = await navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}});
+    qrVideo.srcObject = qrStream;
+    await qrVideo.play();
+    qrMode.textContent = 'scanning';
+    qrTimer = setInterval(async () => {
+      if (!qrDetector || qrBusy) return;
+      try {
+        const codes = await qrDetector.detect(qrVideo);
+        if (codes.length && codes[0].rawValue) {
+          await onDetectedPayload(codes[0].rawValue, true);
+        }
+      } catch (err) {}
+    }, 700);
+  } catch (err) {
+    qrMode.textContent = 'paste fallback';
+    qrCameraHint.textContent = '無法開啟相機：請改用拍照或貼上。';
+    showToast('相機無法使用', String(err), 'warn');
+  }
+}
+
+function stopQrCamera() {
+  if (qrTimer) clearInterval(qrTimer);
+  qrTimer = null;
+  qrDetector = null;
+  if (qrStream) qrStream.getTracks().forEach(track => track.stop());
+  qrStream = null;
+  qrVideo.srcObject = null;
+  qrMode.textContent = 'stopped';
+}
+
+document.getElementById('qrStartCam').addEventListener('click', () => startQrCamera());
+document.getElementById('qrStopCam').addEventListener('click', stopQrCamera);
+document.getElementById('qrCaptureBtn').addEventListener('click', () => qrFile.click());
+document.getElementById('qrPreviewBtn').addEventListener('click', () => previewQr());
+document.getElementById('qrSubmitBtn').addEventListener('click', () => submitQr(false));
+const _qrSubmitAll = document.getElementById('qrSubmitAllBtn');
+if (_qrSubmitAll) _qrSubmitAll.addEventListener('click', () => submitQr(false));
+const _qrAdd = document.getElementById('qrAddAccountBtn');
+if (_qrAdd) _qrAdd.addEventListener('click', () => addQrAccount());
+loadQrAccounts();
+qrFile.addEventListener('change', async () => {
+  const file = qrFile.files && qrFile.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  const image = new Image();
+  image.onload = async () => {
+    const decoded = await decodeQrFromImage(image);
+    URL.revokeObjectURL(url);
+    if (decoded) await onDetectedPayload(decoded, true);
+    else showToast('讀不到 QR', '請改用貼上模式', 'warn');
+  };
+  image.onerror = () => {
+    URL.revokeObjectURL(url);
+    showToast('圖片無法開啟', '', 'err');
+  };
+  image.src = url;
+});
+
 // ── Init ──
 handleHash();
 fetchConfig();
@@ -2934,6 +3324,9 @@ class UserSessionState:
         self.timer_task = None
         self.auto_schedule_enabled = True
         self.manual_stopped_at = 0.0
+        self.qr_submit_lock = None
+        self.qr_submit_in_flight = False
+        self.qr_last_success_hash = ""
 
 def get_session_state(session_id: str) -> UserSessionState:
     if session_id not in USER_SESSIONS:
@@ -3472,6 +3865,240 @@ async def api_stop_monitor(request):
     ctx.append_gui_log("監控服務已完全停止。")
     return web.json_response({"ok": True})
 
+def _qr_account_list() -> list:
+    profiles = ctx.list_profiles(ctx.CONFIG)
+    out = []
+    raw = ctx.CONFIG.get("accounts", {}).get("profiles", {}) if isinstance(ctx.CONFIG.get("accounts"), dict) else {}
+    for profile in profiles:
+        prof = raw.get(profile.name, {}) if isinstance(raw, dict) else {}
+        school = prof.get("school", "") if isinstance(prof, dict) else ""
+        out.append({
+            "name": profile.name,
+            "label": profile.label or profile.name,
+            "user": profile.user if ctx.has_real_credential(profile.user) else "",
+            "user_masked": (profile.user[:2] + "***") if ctx.has_real_credential(profile.user) else "",
+            "school": school,
+        })
+    return out
+
+def _session_has_qr_credentials() -> bool:
+    active_profile = ctx.get_active_profile(ctx.CONFIG)
+    return ctx.has_real_credential(active_profile.user) and ctx.has_real_credential(active_profile.passwd)
+
+async def api_qr_accounts(request):
+    method = request.method.upper()
+    if method == "GET":
+        return web.json_response({"ok": True, "accounts": _qr_account_list()})
+    if method == "POST":
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        name = str((body or {}).get("name") or "").strip()
+        user = str((body or {}).get("user") or "").strip()
+        passwd = str((body or {}).get("passwd") or "").strip()
+        school = str((body or {}).get("school") or "tku").strip()
+        label = str((body or {}).get("label") or name).strip()
+        if not name or not user or not passwd:
+            return web.json_response({"ok": False, "error": "name/user/passwd required"})
+        ctx.set_profile(ctx.CONFIG, name, user, passwd, label=label, make_current=False)
+        profiles = ctx.CONFIG.setdefault("accounts", {}).setdefault("profiles", {})
+        if name in profiles and isinstance(profiles[name], dict):
+            profiles[name]["school"] = school
+            profiles[name]["label"] = label or profiles[name].get("label", name)
+        ctx.save_config()
+        try:
+            ctx.bootstrap_config(force=True)
+        except Exception:
+            pass
+        return web.json_response({"ok": True, "accounts": _qr_account_list()})
+    if method == "DELETE":
+        name = str(request.match_info.get("name") or "").strip()
+        try:
+            body = await request.json()
+            if not name:
+                name = str((body or {}).get("name") or "").strip()
+        except Exception:
+            pass
+        if not name:
+            return web.json_response({"ok": False, "error": "name required"}, status=400)
+        # resolve user before removal
+        target_user = ""
+        for p in ctx.list_profiles(ctx.CONFIG):
+            if p.name == name:
+                target_user = p.user
+                break
+        removed = ctx.remove_profile(ctx.CONFIG, name)
+        if removed:
+            try:
+                ctx.clear_session_cookies(ctx.BASE_DIR, name)
+            except Exception:
+                pass
+            simple = ctx.CONFIG.get("_simple")
+            if isinstance(simple, dict) and isinstance(simple.get("accounts"), list):
+                keys = {name.lower(), (target_user or "").lower()}
+                simple["accounts"] = [a for a in simple["accounts"] if not (isinstance(a, dict) and str(a.get("user","")).lower() in keys)]
+            ctx.save_config()
+            try:
+                ctx.bootstrap_config(force=True)
+            except Exception:
+                pass
+        return web.json_response({"ok": removed, "accounts": _qr_account_list()})
+    return web.json_response({"ok": False, "error": "method not allowed"}, status=405)
+
+async def api_qr_preview(request):
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    payload = str((body or {}).get("payload") or "")
+    result = build_web_gui_qr_preview(payload, previewer=ctx.build_qr_preview)
+    return web.json_response(result)
+
+async def api_qr_submit(request):
+    session_id = CURRENT_SESSION_ID.get()
+    state = get_session_state(session_id)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    payload = str((body or {}).get("payload") or "")
+    mode = str((body or {}).get("mode") or "single").strip().lower()
+    accounts = (body or {}).get("accounts")
+    if not isinstance(accounts, list):
+        accounts = None
+    if state.qr_submit_lock is None:
+        state.qr_submit_lock = asyncio.Lock()
+
+    async def _submit_current_account(raw_payload: str):
+        return await ctx.qr_scanner_submit(raw_payload, False)
+
+    async def _submit_account(profile_name: str, raw_payload: str):
+        original = ctx.get_active_profile(ctx.CONFIG).name
+        try:
+            ctx.switch_profile(ctx.CONFIG, profile_name)
+            active = ctx.get_active_profile(ctx.CONFIG)
+            import aiohttp as _aiohttp
+            headers = {"User-Agent": ctx.random_ua()}
+            session_kwargs = {"connector": ctx.create_http_connector(), "headers": headers}
+            timeout = ctx.create_http_client_timeout()
+            if timeout is not None:
+                session_kwargs["timeout"] = timeout
+            async with _aiohttp.ClientSession(**session_kwargs) as session:
+                if ctx.cookie_cache_enabled(ctx.CONFIG):
+                    ctx.load_session_cookies(session, ctx.BASE_DIR, profile_name)
+                if not ctx.has_session_cookie(session):
+                    login_result = await ctx.login(session)
+                    if not login_result.ok:
+                        return {"ok": False, "status": "login_failed", "error": login_result.status}
+                try:
+                    await ctx.submit_qr_payload(session, raw_payload)
+                    return {"ok": True, "status": "submitted"}
+                except ctx.UnauthorizedError:
+                    session.cookie_jar.clear()
+                    ctx.clear_session_cookies(ctx.BASE_DIR, profile_name)
+                    login_result = await ctx.login(session)
+                    if not login_result.ok:
+                        return {"ok": False, "status": "login_failed", "error": login_result.status}
+                    await ctx.submit_qr_payload(session, raw_payload)
+                    return {"ok": True, "status": "submitted"}
+                except Exception as exc:
+                    return {"ok": False, "status": "failed", "error": str(exc)}
+        except Exception as exc:
+            return {"ok": False, "status": "failed", "error": str(exc)}
+        finally:
+            try:
+                ctx.switch_profile(ctx.CONFIG, original)
+            except Exception:
+                pass
+
+    in_flight = state.qr_submit_in_flight or state.qr_submit_lock.locked()
+    if mode == "all":
+        if accounts is None:
+            accounts = [p.name for p in ctx.list_profiles(ctx.CONFIG)]
+        if in_flight:
+            result, _hash = await run_web_gui_qr_submit(
+                payload,
+                has_credentials=_session_has_qr_credentials(),
+                last_success_hash=state.qr_last_success_hash,
+                in_flight=True,
+                mode="all",
+                accounts=accounts,
+                submitter=_submit_account,
+                previewer=ctx.build_qr_preview,
+            )
+            return web.json_response(result)
+        async with state.qr_submit_lock:
+            state.qr_submit_in_flight = True
+            try:
+                result, next_hash = await run_web_gui_qr_submit(
+                    payload,
+                    has_credentials=_session_has_qr_credentials(),
+                    last_success_hash=state.qr_last_success_hash,
+                    in_flight=False,
+                    mode="all",
+                    accounts=accounts,
+                    submitter=_submit_account,
+                    previewer=ctx.build_qr_preview,
+                )
+                if next_hash:
+                    state.qr_last_success_hash = next_hash
+                status = str(result.get("status") or "")
+                ctx.append_gui_log("QR multi submit: {} ({} users)".format(status, len(result.get("results") or [])))
+                return web.json_response(result)
+            finally:
+                state.qr_submit_in_flight = False
+
+    # single mode
+    if in_flight:
+        result, _hash = await run_web_gui_qr_submit(
+            payload,
+            has_credentials=_session_has_qr_credentials(),
+            last_success_hash=state.qr_last_success_hash,
+            in_flight=True,
+            mode="single",
+            submitter=_submit_current_account,
+            previewer=ctx.build_qr_preview,
+        )
+        return web.json_response(result)
+
+    async with state.qr_submit_lock:
+        state.qr_submit_in_flight = True
+        try:
+            result, next_hash = await run_web_gui_qr_submit(
+                payload,
+                has_credentials=_session_has_qr_credentials(),
+                last_success_hash=state.qr_last_success_hash,
+                in_flight=False,
+                mode="single",
+                submitter=_submit_current_account,
+                previewer=ctx.build_qr_preview,
+            )
+            state.qr_last_success_hash = next_hash
+            status = str(result.get("status") or "")
+            rollcall_id = result.get("rollcall_id") or "-"
+            ctx.append_gui_log("QR submit: {} rollcall {}".format(status, rollcall_id))
+            return web.json_response(result)
+        finally:
+            state.qr_submit_in_flight = False
+
+def create_gui_app() -> web.Application:
+    app = web.Application(middlewares=[session_middleware])
+    app.router.add_get('/', serve_index)
+    app.router.add_get('/favicon.ico', serve_favicon)
+    app.router.add_get('/api/config', api_get_config)
+    app.router.add_post('/api/config', api_save_config)
+    app.router.add_post('/api/schedule', api_save_schedule)
+    app.router.add_get('/api/status', api_get_status)
+    app.router.add_post('/api/start', api_start_monitor)
+    app.router.add_post('/api/stop', api_stop_monitor)
+    app.router.add_get('/api/qr/accounts', api_qr_accounts)
+    app.router.add_post('/api/qr/accounts', api_qr_accounts)
+    app.router.add_delete('/api/qr/accounts/{name}', api_qr_accounts)
+    app.router.add_post('/api/qr/preview', api_qr_preview)
+    app.router.add_post('/api/qr/submit', api_qr_submit)
+    return app
+
 async def auto_schedule_loop():
     while True:
         try:
@@ -3549,15 +4176,7 @@ async def run_gui_server(args) -> int:
     port = args.port or 8791
     open_browser = getattr(args, 'open', True)
 
-    app = web.Application(middlewares=[session_middleware])
-    app.router.add_get('/', serve_index)
-    app.router.add_get('/favicon.ico', serve_favicon)
-    app.router.add_get('/api/config', api_get_config)
-    app.router.add_post('/api/config', api_save_config)
-    app.router.add_post('/api/schedule', api_save_schedule)
-    app.router.add_get('/api/status', api_get_status)
-    app.router.add_post('/api/start', api_start_monitor)
-    app.router.add_post('/api/stop', api_stop_monitor)
+    app = create_gui_app()
 
     runner = web.AppRunner(app)
     await runner.setup()

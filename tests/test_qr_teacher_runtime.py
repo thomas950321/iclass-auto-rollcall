@@ -1,4 +1,4 @@
-import copy
+﻿import copy
 import tempfile
 import unittest
 from pathlib import Path
@@ -14,7 +14,7 @@ except (ImportError, ModuleNotFoundError):
 
 from troTHU import tron
 from troTHU import qr_teacher_runtime
-from tests.fake_tron_server import FakeTronServer
+from tests.helpers.fake_tron_server import FakeTronServer
 
 
 class QrRuntimeFinalizeTest(unittest.IsolatedAsyncioTestCase):
@@ -326,3 +326,4 @@ class QrTeacherRuntimeTest(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

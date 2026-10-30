@@ -1,4 +1,4 @@
-import copy
+﻿import copy
 import unittest
 import unittest.mock
 
@@ -17,7 +17,7 @@ from troTHU.providers import (
     tronclass_api_endpoints,
 )
 from troTHU.research_mode import normalize_research_mode_config
-from tests.fake_tron_server import FakeTronServer
+from tests.helpers.fake_tron_server import FakeTronServer
 
 
 class ProviderConfigTest(unittest.TestCase):
@@ -349,3 +349,4 @@ class ResearchModeConfigTest(unittest.TestCase):
                 self.assertTrue(result["ok"])
                 self.assertEqual(result["answers"][0]["rollcall_id"], "77")
                 self.assertEqual(result["answers"][0]["body"]["data"], "synthetic-qr-data")
+

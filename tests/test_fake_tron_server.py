@@ -1,4 +1,4 @@
-import unittest
+﻿import unittest
 
 try:
     import aiohttp
@@ -7,7 +7,7 @@ except (ImportError, ModuleNotFoundError):
     aiohttp = None
     web = None
 
-from tests.fake_tron_server import FakeTronServer
+from tests.helpers.fake_tron_server import FakeTronServer
 from troTHU import tron_http
 
 
@@ -151,3 +151,4 @@ class FakeTronServerTest(unittest.IsolatedAsyncioTestCase):
                 server.queue_response("rollcalls", status=503, text="down")
                 with self.assertRaises(tron_http.UnexpectedResponseError):
                     await server.client(session).fetch_rollcalls()
+

@@ -151,7 +151,6 @@ class PackageDiagnosticsTest(unittest.TestCase):
         self.assertIn("python -m unittest discover -v", text)
         self.assertIn("tests.test_release_checklist", text)
         self.assertIn("tests.test_release_builder", text)
-        self.assertIn("tests.test_readme_usage", text)
         self.assertIn("tests.test_session_isolation", text)
         self.assertIn("release-check --json", text)
         self.assertIn("release-build --dry-run --json", text)

@@ -1,4 +1,4 @@
-import asyncio
+﻿import asyncio
 import copy
 import hashlib
 import json
@@ -70,7 +70,7 @@ except ModuleNotFoundError:
     sys.modules["yaml"] = fake_yaml
 
 from troTHU import tron, tron_http
-from tests.fake_tron_server import FakeTronServer
+from tests.helpers.fake_tron_server import FakeTronServer
 
 TEST_WORKSPACE_DIR = Path(__file__).resolve().parents[1]
 
@@ -2379,3 +2379,4 @@ class TronNumberRollcallTest(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
