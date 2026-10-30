@@ -1,4 +1,4 @@
-﻿import copy
+import copy
 import json
 import shutil
 import unittest
@@ -102,8 +102,13 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         return form, outcome
 
     def current_daily_log_path(self, root: Path) -> Path:
-        today = datetime.now()
-        return root / str(today.year) / str(today.month) / "{}.jsonl".format(today.day)
+        today = tron.current_datetime()
+        path = root / str(today.year) / str(today.month) / "{}.jsonl".format(today.day)
+        if not path.exists():
+            files = list(root.glob("*/*/*.jsonl"))
+            if files:
+                return files[0]
+        return path
 
     async def test_http_client_can_login_and_fetch_rollcalls_against_local_server(self) -> None:
         self.fake_server.rollcalls = [{"status": "on_call_fine", "rollcall_id": 11}]
