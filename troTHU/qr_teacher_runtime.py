@@ -207,7 +207,9 @@ def _rollcall_id(rollcall) -> str:
 def _can_attempt_qr_assist(rollcall_id: str) -> bool:
     if not rollcall_id:
         return False
-    last_attempt = float(ctx.QR_ASSIST_ATTEMPTS.get(rollcall_id, 0.0) or 0.0)
+    if rollcall_id not in ctx.QR_ASSIST_ATTEMPTS:
+        return True
+    last_attempt = float(ctx.QR_ASSIST_ATTEMPTS[rollcall_id] or 0.0)
     return ctx.time.monotonic() - last_attempt >= QR_ASSIST_RETRY_COOLDOWN_SECONDS
 
 
